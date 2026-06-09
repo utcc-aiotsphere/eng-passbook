@@ -13,10 +13,9 @@ export async function ensureUserProfile(user: { uid: string; displayName: string
     photoURL: user.photoURL || null,
     updatedAt: serverTimestamp(),
     lastLoginAt: serverTimestamp(),
-    disabled: false,
   };
   if (!snap.exists()) {
-    await setDoc(ref, { ...base, globalRole: "user", createdAt: serverTimestamp() });
+    await setDoc(ref, { ...base, globalRole: "user", disabled: false, createdAt: serverTimestamp() });
   } else {
     await setDoc(ref, base, { merge: true });
   }
@@ -44,4 +43,3 @@ export async function registerWithEmail(email: string, password: string, display
 export async function logout() {
   await signOut(requireAuth());
 }
-
