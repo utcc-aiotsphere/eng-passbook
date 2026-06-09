@@ -16,6 +16,16 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue>({ firebaseReady, firebaseUser: null, user: null, loading: true });
 
+function fallbackAppUser(current: User): AppUser {
+  return {
+    uid: current.uid,
+    displayName: current.displayName || current.email?.split("@")[0] || "UTCC User",
+    email: current.email || "",
+    photoURL: current.photoURL,
+    globalRole: "user",
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [user, setUser] = useState<AppUser | null>(null);
@@ -35,10 +45,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      await ensureUserProfile(current);
-      const snap = await getDoc(doc(activeDb, "users", current.uid));
-      setUser(snap.exists() ? (snap.data() as AppUser) : null);
-      setLoading(false);
+      try {
+        await ensureUserProfile(current);
+        const snap = await getDoc(doc(activeDb, "users", current.uid));
+        setUser(snap.exists() ? (snap.data() as AppUser) : fallbackAppUser(current));
+      } catch (error) {
+        console.warn("Signed in, but Firestore denied user profile access.", error);
+        setUser(fallbackAppUser(current));
+      } finally {
+        setLoading(false);
+      }
     });
   }, []);
 

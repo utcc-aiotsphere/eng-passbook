@@ -2,6 +2,10 @@ import { GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndP
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { requireAuth, requireDb } from "./client";
 
+function isPermissionError(error: unknown) {
+  return error instanceof Error && error.message.toLowerCase().includes("permission");
+}
+
 export async function ensureUserProfile(user: { uid: string; displayName: string | null; email: string | null; photoURL?: string | null }) {
   const db = requireDb();
   const ref = doc(db, "users", user.uid);
@@ -24,20 +28,29 @@ export async function ensureUserProfile(user: { uid: string; displayName: string
 export async function loginWithGoogle() {
   const auth = requireAuth();
   const credential = await signInWithPopup(auth, new GoogleAuthProvider());
-  await ensureUserProfile(credential.user);
+  await ensureUserProfile(credential.user).catch((error) => {
+    if (!isPermissionError(error)) throw error;
+    console.warn("Signed in, but Firestore denied profile sync.", error);
+  });
 }
 
 export async function loginWithEmail(email: string, password: string) {
   const auth = requireAuth();
   const credential = await signInWithEmailAndPassword(auth, email, password);
-  await ensureUserProfile(credential.user);
+  await ensureUserProfile(credential.user).catch((error) => {
+    if (!isPermissionError(error)) throw error;
+    console.warn("Signed in, but Firestore denied profile sync.", error);
+  });
 }
 
 export async function registerWithEmail(email: string, password: string, displayName: string) {
   const auth = requireAuth();
   const credential = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(credential.user, { displayName });
-  await ensureUserProfile({ ...credential.user, displayName });
+  await ensureUserProfile({ ...credential.user, displayName }).catch((error) => {
+    if (!isPermissionError(error)) throw error;
+    console.warn("Registered, but Firestore denied profile sync.", error);
+  });
 }
 
 export async function logout() {
