@@ -7,6 +7,19 @@ import { useAuth } from "./AuthProvider";
 import { CyberCard } from "@/components/cyber/CyberCard";
 import { NeonButton } from "@/components/cyber/NeonButton";
 
+function getAuthErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) return "เข้าสู่ระบบไม่สำเร็จ";
+
+  if (
+    "code" in error &&
+    (error.code === "auth/configuration-not-found" || error.code === "auth/operation-not-allowed")
+  ) {
+    return "ยังไม่ได้เปิดวิธีเข้าสู่ระบบนี้ใน Firebase Console โปรดเปิด Email/Password และ Google ใน Authentication > Sign-in method";
+  }
+
+  return error.message;
+}
+
 export function LoginPanel() {
   const { user, firebaseReady } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -23,7 +36,7 @@ export function LoginPanel() {
       else await registerWithEmail(email, password, displayName);
       setMessage("เข้าสู่ระบบสำเร็จ");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "เข้าสู่ระบบไม่สำเร็จ");
+      setMessage(getAuthErrorMessage(error));
     }
   }
 
@@ -42,9 +55,8 @@ export function LoginPanel() {
         <input className="w-full rounded-md border border-cyan-300/25 bg-slate-950/70 px-3 py-3" type="password" placeholder="รหัสผ่าน" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={6} />
         <NeonButton className="w-full" type="submit">{mode === "login" ? <LogIn size={16} /> : <UserPlus size={16} />} {mode === "login" ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}</NeonButton>
       </form>
-      <NeonButton className="mt-3 w-full border-violet-300/55 bg-violet-300/12" onClick={() => loginWithGoogle().catch((error) => setMessage(error.message))}>เข้าสู่ระบบด้วย Google</NeonButton>
+      <NeonButton className="mt-3 w-full border-violet-300/55 bg-violet-300/12" onClick={() => loginWithGoogle().catch((error) => setMessage(getAuthErrorMessage(error)))}>เข้าสู่ระบบด้วย Google</NeonButton>
       {message ? <p className="mt-3 text-sm text-amber-100">{message}</p> : null}
     </CyberCard>
   );
 }
-
