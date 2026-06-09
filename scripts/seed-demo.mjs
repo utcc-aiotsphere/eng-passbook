@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { applicationDefault, cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
@@ -25,12 +25,31 @@ const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || "https://utcc-aiotsph
 const adminUid = process.env.SEED_ADMIN_UID;
 const adminEmail = process.env.SEED_ADMIN_EMAIL;
 
+function validateServiceAccountKey(key) {
+  const missing = ["type", "project_id", "private_key", "client_email"].filter((field) => !key[field]);
+  if (missing.length) {
+    throw new Error(`Invalid Firebase service account JSON. Missing: ${missing.join(", ")}`);
+  }
+  if (key.type !== "service_account") {
+    throw new Error(`Invalid Firebase service account JSON. Expected type service_account, received ${key.type}.`);
+  }
+  if (key.project_id !== projectId) {
+    throw new Error(`Service account project_id ${key.project_id} does not match FIREBASE_PROJECT_ID ${projectId}.`);
+  }
+}
+
 async function credential() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    return cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY));
+    const key = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    validateServiceAccountKey(key);
+    return cert(key);
   }
   if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
-    const key = JSON.parse(await readFile(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, "utf8"));
+    const serviceAccountPath = isAbsolute(process.env.FIREBASE_SERVICE_ACCOUNT_PATH)
+      ? process.env.FIREBASE_SERVICE_ACCOUNT_PATH
+      : resolve(process.cwd(), process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+    const key = JSON.parse(await readFile(serviceAccountPath, "utf8"));
+    validateServiceAccountKey(key);
     return cert(key);
   }
   return applicationDefault();
@@ -40,11 +59,9 @@ if (!projectId) {
   throw new Error("Set FIREBASE_PROJECT_ID or NEXT_PUBLIC_FIREBASE_PROJECT_ID before running seed:demo.");
 }
 
-if (!getApps().length) {
-  initializeApp({ credential: await credential(), projectId });
-}
+const app = getApps()[0] || initializeApp({ credential: await credential(), projectId });
 
-const db = getFirestore();
+const db = getFirestore(app);
 const seedPath = join(process.cwd(), "seed", "demo-seed.json");
 const seed = JSON.parse(await readFile(seedPath, "utf8"));
 const now = FieldValue.serverTimestamp();
@@ -125,6 +142,11 @@ try {
   if (error instanceof Error && error.message.includes("Could not load the default credentials")) {
     throw new Error(
       "Missing Firebase Admin credentials. Set FIREBASE_SERVICE_ACCOUNT_PATH=/absolute/path/to/service-account.json, GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json, or FIREBASE_SERVICE_ACCOUNT_KEY with the service account JSON.",
+    );
+  }
+  if (error instanceof Error && (error.message.includes("UNAUTHENTICATED") || error.message.includes("invalid authentication credentials"))) {
+    throw new Error(
+      "Firebase rejected the service account credentials. Generate a new private key in Firebase Console > Project settings > Service accounts, update FIREBASE_SERVICE_ACCOUNT_PATH, then run npm run seed:demo again.",
     );
   }
   throw error;
