@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { LogIn, UserPlus } from "lucide-react";
-import { loginWithEmail, loginWithGoogle, registerWithEmail } from "@/lib/firebase/auth";
+import { LogIn, LogOut, UserPlus } from "lucide-react";
+import { loginWithEmail, loginWithGoogle, logout, registerWithEmail } from "@/lib/firebase/auth";
 import { useAuth } from "./AuthProvider";
 import { CyberCard } from "@/components/cyber/CyberCard";
 import { NeonButton } from "@/components/cyber/NeonButton";
+import { RoleBadge } from "@/components/RoleBadge";
 
 function getAuthErrorMessage(error: unknown) {
   if (!(error instanceof Error)) return "เข้าสู่ระบบไม่สำเร็จ";
@@ -31,6 +32,7 @@ export function LoginPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -44,7 +46,37 @@ export function LoginPanel() {
     }
   }
 
-  if (user) return <CyberCard className="p-5">เข้าสู่ระบบแล้ว: {user.displayName}</CyberCard>;
+  async function signOut() {
+    setLoggingOut(true);
+    setMessage("");
+    try {
+      await logout();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "ออกจากระบบไม่สำเร็จ");
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
+  if (user) {
+    return (
+      <CyberCard className="p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <p className="font-bold">เข้าสู่ระบบแล้ว: {user.displayName}</p>
+              <RoleBadge role={user.globalRole} />
+            </div>
+            <p className="text-sm text-slate-300">{user.email}</p>
+          </div>
+          <NeonButton className="shrink-0 border-rose-300/55 bg-rose-300/12" onClick={signOut} disabled={loggingOut}>
+            <LogOut size={16} /> {loggingOut ? "กำลังออก..." : "Logout"}
+          </NeonButton>
+        </div>
+        {message ? <p className="mt-3 text-sm text-amber-100">{message}</p> : null}
+      </CyberCard>
+    );
+  }
   if (!firebaseReady) return <CyberCard className="p-5">เพิ่มค่า Firebase ใน `.env.local` เพื่อเปิดระบบเข้าสู่ระบบจริง</CyberCard>;
 
   return (
