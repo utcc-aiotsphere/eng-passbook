@@ -56,6 +56,10 @@ service cloud.firestore {
       return isAdmin() || eventDoc(eventId).data.visibility == "public" || isEventViewer(eventId) || isEventEditor(eventId);
     }
 
+    function isPublicEvent() {
+      return resource.data.visibility == "public";
+    }
+
     function stationTokenMatches(eventId, stationId) {
       return request.resource.data.token == get(/databases/$(database)/documents/events/$(eventId)/stationSecrets/$(stationId)).data.qrToken;
     }
@@ -65,14 +69,13 @@ service cloud.firestore {
       allow create: if isSelf(userId) && request.resource.data.globalRole == "user";
       allow update: if isAdmin() || (
         isSelf(userId) &&
-        !("globalRole" in request.resource.data.diff(resource.data).changedKeys()) &&
-        !("disabled" in request.resource.data.diff(resource.data).changedKeys())
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(["globalRole", "disabled"])
       );
       allow delete: if isAdmin();
     }
 
     match /events/{eventId} {
-      allow read: if canViewEvent(eventId);
+      allow read: if isPublicEvent() || isAdmin() || isEventViewer(eventId) || isEventEditor(eventId);
       allow create: if isEventManager() && request.resource.data.createdBy == request.auth.uid;
       allow update: if canManageEvent(eventId);
       allow delete: if isAdmin() || isEventOwner(eventId);
@@ -140,4 +143,3 @@ service cloud.firestore {
     }
   }
 }
-
