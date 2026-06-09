@@ -37,18 +37,24 @@ Event Managers use `globalRole: "eventManager"`.
 
 Use `seed/demo-seed.json` or run the seed script to create the demo event, stations, and QR secrets.
 
-Create a Firebase service account key from Firebase Console > Project settings > Service accounts, then run:
+Create a Firebase service account key from Firebase Console > Project settings > Service accounts.
+
+You can put the path in `.env.local`:
 
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS="/absolute/path/to/service-account.json"
-FIREBASE_PROJECT_ID="utccaiotsphere-8bd66" npm run seed:demo
+FIREBASE_PROJECT_ID="utccaiotsphere-8bd66"
+FIREBASE_SERVICE_ACCOUNT_PATH="/absolute/path/to/service-account.json"
 ```
 
-To also make your existing signed-in Firebase Auth user the first admin, pass their UID and email:
+Then run:
 
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS="/absolute/path/to/service-account.json"
-FIREBASE_PROJECT_ID="utccaiotsphere-8bd66" \
+npm run seed:demo
+```
+
+To also make your existing signed-in Firebase Auth user the first admin, add their UID and email:
+
+```bash
 SEED_ADMIN_UID="your-firebase-auth-uid" \
 SEED_ADMIN_EMAIL="you@example.com" \
 npm run seed:demo

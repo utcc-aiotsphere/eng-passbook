@@ -3,14 +3,35 @@ import { join } from "node:path";
 import { applicationDefault, cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
+async function loadEnvFile(fileName) {
+  try {
+    const content = await readFile(join(process.cwd(), fileName), "utf8");
+    for (const line of content.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
+      const [key, ...valueParts] = trimmed.split("=");
+      const value = valueParts.join("=").trim().replace(/^["']|["']$/g, "");
+      if (!process.env[key]) process.env[key] = value;
+    }
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
+
+await loadEnvFile(".env.local");
+
 const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || "https://utcc-aiotsphere.github.io/eng-passbook";
 const adminUid = process.env.SEED_ADMIN_UID;
 const adminEmail = process.env.SEED_ADMIN_EMAIL;
 
-function credential() {
+async function credential() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
     return cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY));
+  }
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+    const key = JSON.parse(await readFile(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, "utf8"));
+    return cert(key);
   }
   return applicationDefault();
 }
@@ -20,7 +41,7 @@ if (!projectId) {
 }
 
 if (!getApps().length) {
-  initializeApp({ credential: credential(), projectId });
+  initializeApp({ credential: await credential(), projectId });
 }
 
 const db = getFirestore();
@@ -103,7 +124,7 @@ try {
 } catch (error) {
   if (error instanceof Error && error.message.includes("Could not load the default credentials")) {
     throw new Error(
-      "Missing Firebase Admin credentials. Set GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json or FIREBASE_SERVICE_ACCOUNT_KEY with the service account JSON.",
+      "Missing Firebase Admin credentials. Set FIREBASE_SERVICE_ACCOUNT_PATH=/absolute/path/to/service-account.json, GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json, or FIREBASE_SERVICE_ACCOUNT_KEY with the service account JSON.",
     );
   }
   throw error;
