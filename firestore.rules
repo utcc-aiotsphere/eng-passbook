@@ -1,0 +1,143 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userDoc().data.globalRole == "admin";
+    }
+
+    function isEventManager() {
+      return isSignedIn() && userDoc().data.globalRole in ["admin", "eventManager"];
+    }
+
+    function eventDoc(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId));
+    }
+
+    function memberDoc(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId)/members/$(request.auth.uid));
+    }
+
+    function isEventOwner(eventId) {
+      return isSignedIn() && (
+        request.auth.uid in eventDoc(eventId).data.ownerIds ||
+        (memberDoc(eventId).data.status == "active" && memberDoc(eventId).data.role == "owner")
+      );
+    }
+
+    function isEventEditor(eventId) {
+      return isSignedIn() && (
+        isEventOwner(eventId) ||
+        request.auth.uid in eventDoc(eventId).data.managerIds ||
+        (memberDoc(eventId).data.status == "active" && memberDoc(eventId).data.role == "editor")
+      );
+    }
+
+    function isEventViewer(eventId) {
+      return isSignedIn() && memberDoc(eventId).data.status == "active" && memberDoc(eventId).data.role in ["owner", "editor", "viewer"];
+    }
+
+    function canManageEvent(eventId) {
+      return isAdmin() || isEventEditor(eventId);
+    }
+
+    function canViewEvent(eventId) {
+      return isAdmin() || eventDoc(eventId).data.visibility == "public" || isEventViewer(eventId) || isEventEditor(eventId);
+    }
+
+    function stationTokenMatches(eventId, stationId) {
+      return request.resource.data.token == get(/databases/$(database)/documents/events/$(eventId)/stationSecrets/$(stationId)).data.qrToken;
+    }
+
+    match /users/{userId} {
+      allow read: if isSelf(userId) || isAdmin();
+      allow create: if isSelf(userId) && request.resource.data.globalRole == "user";
+      allow update: if isAdmin() || (
+        isSelf(userId) &&
+        !("globalRole" in request.resource.data.diff(resource.data).changedKeys()) &&
+        !("disabled" in request.resource.data.diff(resource.data).changedKeys())
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /events/{eventId} {
+      allow read: if canViewEvent(eventId);
+      allow create: if isEventManager() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if canManageEvent(eventId);
+      allow delete: if isAdmin() || isEventOwner(eventId);
+
+      match /stations/{stationId} {
+        allow read: if canViewEvent(eventId);
+        allow create, update, delete: if canManageEvent(eventId);
+      }
+
+      // QR secrets are never readable by participants; rules compare token during check-in writes.
+      match /stationSecrets/{stationId} {
+        allow read: if canManageEvent(eventId);
+        allow create, update, delete: if canManageEvent(eventId);
+      }
+
+      match /members/{userId} {
+        allow read: if canViewEvent(eventId);
+        allow create, update, delete: if isAdmin() || isEventOwner(eventId);
+      }
+
+      match /participants/{userId} {
+        allow read: if isSelf(userId) || canViewEvent(eventId);
+        allow create: if isSelf(userId) && request.resource.data.userId == request.auth.uid;
+        allow update: if isSelf(userId)
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.rewardStatus in ["notEligible", "eligible"]
+          || canManageEvent(eventId);
+        allow delete: if canManageEvent(eventId);
+      }
+
+      match /checkins/{checkinId} {
+        allow read: if isSelf(resource.data.userId) || canViewEvent(eventId);
+        allow create: if isSignedIn()
+          && request.resource.data.userId == request.auth.uid
+          && eventDoc(eventId).data.status in ["published", "active"]
+          && exists(/databases/$(database)/documents/events/$(eventId)/stations/$(request.resource.data.stationId))
+          && stationTokenMatches(eventId, request.resource.data.stationId);
+        allow update: if canManageEvent(eventId) || (
+          isSelf(resource.data.userId)
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.status in ["completed", "capped"]
+        );
+        allow delete: if false;
+      }
+    }
+
+    match /userBadges/{badgeId} {
+      allow read: if resource.data.status == "active" || isSelf(resource.data.userId) || isAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || canManageEvent(resource.data.eventId);
+      allow delete: if false;
+    }
+
+    match /invites/{inviteId} {
+      allow read: if isSignedIn() && (resource.data.email == request.auth.token.email || canManageEvent(resource.data.eventId));
+      allow create: if canManageEvent(request.resource.data.eventId);
+      allow update: if isSignedIn() && (resource.data.email == request.auth.token.email || canManageEvent(resource.data.eventId));
+      allow delete: if canManageEvent(resource.data.eventId);
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isAdmin() || canViewEvent(resource.data.eventId);
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+  }
+}
+

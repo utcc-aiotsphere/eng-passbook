@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+:root {
+  --background: #050816;
+  --foreground: #e5faff;
+  --card: rgba(15, 23, 42, 0.72);
+  --cyan: #38d6ff;
+  --violet: #8b5cf6;
+  --magenta: #ff3dce;
+  --amber: #facc15;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Inter", "Noto Sans Thai", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  outline-color: var(--cyan);
+}
+
+.cyber-shell {
+  background:
+    radial-gradient(circle at top left, rgba(56, 214, 255, 0.18), transparent 28rem),
+    radial-gradient(circle at top right, rgba(255, 61, 206, 0.14), transparent 26rem),
+    linear-gradient(rgba(56, 214, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 214, 255, 0.035) 1px, transparent 1px),
+    #050816;
+  background-size: auto, auto, 42px 42px, 42px 42px, auto;
+}
+
+.glass {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.82), rgba(7, 11, 31, 0.74));
+  border: 1px solid rgba(56, 214, 255, 0.24);
+  box-shadow: 0 0 38px rgba(56, 214, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.neon-text {
+  color: #e9fbff;
+  text-shadow: 0 0 22px rgba(56, 214, 255, 0.38);
+}
+
+.scan-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(56, 214, 255, 0.08), transparent);
+  transform: translateY(-100%);
+  animation: scan 5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-line::after {
+    animation: none;
+  }
+}
+
+@keyframes scan {
+  to {
+    transform: translateY(100%);
+  }
+}

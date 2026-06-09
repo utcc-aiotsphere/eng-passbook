@@ -1,0 +1,39 @@
+{
+  "events": {
+    "demo-aiot-open-house": {
+      "name": "UTCC AIoT Sphere Mini Open House",
+      "slug": "utcc-aiot-sphere-mini-open-house",
+      "description": "กิจกรรมทดลองสะสมฐาน AIoT Sphere สำหรับงานเปิดบ้านวิศวกรรมศาสตร์ UTCC",
+      "themePreset": "hologram-ops",
+      "location": "UTCC Engineering",
+      "status": "active",
+      "visibility": "public",
+      "requiredStationMode": "all",
+      "requiredStationIds": [],
+      "maxDwellMinutesPerStation": 30,
+      "allowRepeatCheckin": false,
+      "rewardEnabled": true,
+      "rewardName": "UTCC ENG Passbook Completion Reward",
+      "badgeEnabled": true,
+      "badgeTemplate": {
+        "badgeTitle": "AIoT Sphere Explorer",
+        "subtitle": "UTCC Engineering",
+        "badgeLevel": "Explorer",
+        "badgeIcon": "AI",
+        "colorTheme": "cyan"
+      }
+    }
+  },
+  "stations": [
+    { "stationId": "aibi-lab", "name": "AIBI Lab", "stationNumber": 1, "locationLabel": "AIBI Lab", "isRequired": true, "estimatedDurationMinutes": 10 },
+    { "stationId": "aix-pavilion", "name": "AIX Pavilion", "stationNumber": 2, "locationLabel": "AIX Pavilion", "isRequired": true, "estimatedDurationMinutes": 10 },
+    { "stationId": "aix-studio", "name": "AIX Studio", "stationNumber": 3, "locationLabel": "AIX Studio", "isRequired": true, "estimatedDurationMinutes": 10 },
+    { "stationId": "ai-training-center", "name": "AI Training Center", "stationNumber": 4, "locationLabel": "AI Training Center", "isRequired": true, "estimatedDurationMinutes": 10 }
+  ],
+  "demoUsers": [
+    { "email": "admin@example.com", "globalRole": "admin" },
+    { "email": "manager@example.com", "globalRole": "eventManager" },
+    { "email": "participant@example.com", "globalRole": "user" }
+  ]
+}
+
