@@ -10,6 +10,10 @@ import { NeonButton } from "@/components/cyber/NeonButton";
 function getAuthErrorMessage(error: unknown) {
   if (!(error instanceof Error)) return "เข้าสู่ระบบไม่สำเร็จ";
 
+  if ("code" in error && error.code === "auth/unauthorized-domain") {
+    return "โดเมนนี้ยังไม่ได้รับอนุญาตใน Firebase Console โปรดเพิ่ม utcc-aiotsphere.github.io ใน Authentication > Settings > Authorized domains";
+  }
+
   if (
     "code" in error &&
     (error.code === "auth/configuration-not-found" || error.code === "auth/operation-not-allowed")
