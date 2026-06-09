@@ -35,7 +35,26 @@ Event Managers use `globalRole: "eventManager"`.
 
 ## Demo Seed
 
-Use `seed/demo-seed.json` as a manual Firestore reference for:
+Use `seed/demo-seed.json` or run the seed script to create the demo event, stations, and QR secrets.
+
+Create a Firebase service account key from Firebase Console > Project settings > Service accounts, then run:
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/absolute/path/to/service-account.json"
+FIREBASE_PROJECT_ID="utccaiotsphere-8bd66" npm run seed:demo
+```
+
+To also make your existing signed-in Firebase Auth user the first admin, pass their UID and email:
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/absolute/path/to/service-account.json"
+FIREBASE_PROJECT_ID="utccaiotsphere-8bd66" \
+SEED_ADMIN_UID="your-firebase-auth-uid" \
+SEED_ADMIN_EMAIL="you@example.com" \
+npm run seed:demo
+```
+
+The seed creates:
 
 - `UTCC AIoT Sphere Mini Open House`
 - AIBI Lab
